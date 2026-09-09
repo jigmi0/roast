@@ -30,7 +30,7 @@ if nargin <2 || isempty(T2) %no T2 specified
 end
 
 if nargin <3 || isempty(Template) %no Template
-    Template = fullfile(fileparts(which(mfilename)),'eTPM.nii');
+    Template = fullfile(fileparts(fileparts(fileparts(which(mfilename)))),'data','eTPM.nii');
 end
 
 if nargin <4 || isempty(norm) %norm not specified... do not normalize data

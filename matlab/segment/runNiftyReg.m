@@ -44,7 +44,7 @@ else
     Affine = inv(Affine); % to be consistent with SPM format
     % also save voxel-to-world matrices for the MRI and TPM, to be
     % consistent with SPM format
-    tpm = spm_vol('eTPM.nii');
+    tpm = spm_vol(fullfile('data','eTPM.nii'));
     image = spm_vol(input_mri);
     save([dirname filesep mriName '_niftyReg.mat'],'Affine','image','tpm');
 end

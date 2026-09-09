@@ -75,8 +75,8 @@ disp('General Public License version 3 or later. It''s supported by')
 disp('both NIH grants and Soterix Medical Inc.')
 disp('=============================================================')
 
-if isempty(strfind(path,[fileparts(which(mfilename)) filesep 'lib/']))
-    addpath(genpath([fileparts(which(mfilename)) filesep 'lib/']));
+if isempty(strfind(path,[fileparts(fileparts(fileparts(which(mfilename)))) filesep 'lib' filesep]))
+    addpath(genpath([fileparts(fileparts(fileparts(which(mfilename)))) filesep 'lib' filesep]));
 end
 
 fprintf('\n\n');
@@ -434,7 +434,7 @@ else
     
     warning('You specified the ''recipe'' as the ''lead field generation''. Nice choice! Note all customized options on electrodes are overwritten by the defaults. Refer to the readme file for more details. Also this will usually take a long time (>1 day) to generate the lead field for all the candidate electrodes.');
 
-    fid = fopen('./elec72.loc'); C = textscan(fid,'%d %f %f %s'); fclose(fid);
+    fid = fopen('data/elec72.loc'); C = textscan(fid,'%d %f %f %s'); fclose(fid);
     elecName = C{4}; for i=1:length(elecName), elecName{i} = strrep(elecName{i},'.',''); end
     capType = '1010';
     elecType = 'disc';
@@ -874,7 +874,7 @@ if ~strcmp(subjName,'nyhead')
             % get the scalp center, and the fitted 10-10 electrodes on the central sagittal line, to help estimate the Affine
             scalp=segMask.img>0;
             scalp_surface = mask2EdgePointCloud(scalp,'erode',ones(3,3,3));
-            capInfo = table2cell(readtable('capInfo.xlsx','Sheet','10-05'));
+            capInfo = table2cell(readtable('data/capInfo.xlsx','Sheet','10-05'));
             [landmarksNew(8:end,:),landmarksNew(7,:)]= fitCap2individual(scalp,scalp_surface,landmarksNew(1:4,:),image,capInfo,[],0,0);
             % use the 4 manually clicked landmarks, the scalp center, and the fitted 10-10 electrodes on the central sagittal line to estimate the Affine
             indForAffine = [1:4,7:16];

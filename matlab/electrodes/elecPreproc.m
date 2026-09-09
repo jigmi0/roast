@@ -14,13 +14,13 @@ unknownElec = 0;
 
 switch lower(para(1).capType)
     case {'1020','1010','1005'}
-        capInfo = table2cell(readtable('capInfo.xlsx','Sheet','10-05'));
+        capInfo = table2cell(readtable('data/capInfo.xlsx','Sheet','10-05'));
         elecPool_P = capInfo(:,1);
     case 'biosemi'
-        capInfo = table2cell(readtable('capInfo.xlsx','Sheet','BioSemi'));
+        capInfo = table2cell(readtable('data/capInfo.xlsx','Sheet','BioSemi'));
         elecPool_P = capInfo(:,1);
     case 'egi'
-        capInfo = table2cell(readtable('capInfo.xlsx','Sheet','EGI'));
+        capInfo = table2cell(readtable('data/capInfo.xlsx','Sheet','EGI'));
         elecPool_P = capInfo(:,1);
 end
 

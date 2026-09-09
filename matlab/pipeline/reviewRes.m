@@ -80,8 +80,8 @@ disp('General Public License version 3 or later. It''s supported by')
 disp('both NIH grants and Soterix Medical Inc.')
 disp('=============================================================')
 
-if isempty(strfind(path,[fileparts(which(mfilename)) filesep 'lib/']))
-    addpath(genpath([fileparts(which(mfilename)) filesep 'lib/']));
+if isempty(strfind(path,[fileparts(fileparts(fileparts(which(mfilename)))) filesep 'lib' filesep]))
+    addpath(genpath([fileparts(fileparts(fileparts(which(mfilename)))) filesep 'lib' filesep]));
 end
 
 % check subject name
@@ -241,7 +241,7 @@ if isRoast
     
 else
     
-    fid = fopen('./elec72.loc'); C = textscan(fid,'%d %f %f %s'); fclose(fid);
+    fid = fopen('data/elec72.loc'); C = textscan(fid,'%d %f %f %s'); fclose(fid);
     elecName = C{4}; for i=1:length(elecName), elecName{i} = strrep(elecName{i},'.',''); end
     elecPara = struct('capType','1010');
     
@@ -289,7 +289,7 @@ else
         cm(3:62,:) = ones(60,3);
     end
     figure('Name',['Montage in Targeting: ' tarTag],'NumberTitle','off');
-    mytopoplot(r.mon,'./elec72.loc','numcontour',0,'plotrad',0.9,'shading','flat','gridscale',1000,'whitebk','off','colormap',cm);
+    mytopoplot(r.mon,'data/elec72.loc','numcontour',0,'plotrad',0.9,'shading','flat','gridscale',1000,'whitebk','off','colormap',cm);
     hc = colorbar; set(hc,'FontSize',18,'YAxisLocation','right');
     title(hc,'Injected current (mA)','FontSize',18);
     caxis([min(r.mon) max(r.mon)]);
