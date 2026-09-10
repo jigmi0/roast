@@ -1,4 +1,12 @@
-"""Optimised (targeted) transcranial electric stimulation."""
+"""Optimised (targeted) transcranial electric stimulation.
+
+* :mod:`~roast.targeting.convex` - the six convex programs: least squares, LCMV
+  and maximum intensity, each with and without a per-electrode current bound.
+* :mod:`~roast.targeting.currents` - picks the program for the requested
+  algorithm and assembles its inputs from the lead field.
+* :mod:`~roast.targeting.optimize` - the problem definition, the preparation
+  (target nodes, weights, SVD) and the search over the field orientation.
+"""
 
 from .convex import (ls_l1, ls_l1per, max_l1, max_l1per, lcmv_l1, lcmv_l1per)
 from .currents import optimize_currents

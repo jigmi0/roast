@@ -1,4 +1,12 @@
 function [x,cvx_status] = lcmv_l1(A,C,f,ub,verbose)
+% [x,cvx_status] = lcmv_l1(A,C,f,ub,verbose)
+%
+% Linearly constrained minimum variance, with an L1 bound on the current.
+%
+% Minimises the field everywhere, ||A*x||_2, while holding the field at the
+% targets fixed through C*x == f, subject to a total injected current of at
+% most ub. This buys focality: everything outside the target is suppressed.
+%
 % Accepts any number of targeting ROIs.
 % ANDY 2014-10-27
 % ANDY 2017-01-30

@@ -1,6 +1,10 @@
 function viewSeg(mask,mri2mni)
 % viewSeg(mask,mri2mni)
 % 
+% Show the tissue segmentation in the slice viewer, using a colormap chosen to
+% look anatomical: white matter white, gray matter gray, CSF blue, then bone,
+% skin and air cavities.
+% 
 % (c) Yu (Andy) Huang
 % yhuang16@citymail.cuny.edu
 % July 2025

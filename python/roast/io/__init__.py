@@ -1,4 +1,14 @@
-"""File input/output for ROAST (NIfTI, MATLAB, mesh and layout files)."""
+"""File input/output for ROAST.
+
+* :mod:`~roast.io.nifti` - reading and writing NIfTI volumes with the voxel data
+  and the header left untouched, plus the SPM ``mat``/``dim`` geometry.
+* :mod:`~roast.io.matfile` - the ``.mat`` files exchanged with SPM (the
+  ``_seg8.mat`` mapping) and the result files ROAST writes.
+* :mod:`~roast.io.meshfile` - the mesh and solver formats: INRImage in, Medit
+  out, Gmsh for the solver, and the getDP node tables that come back.
+* :mod:`~roast.io.caps` - the electrode layout files (``capInfo.xlsx``,
+  ``elec72.loc`` and the per-subject custom locations).
+"""
 
 from .nifti import (NiftiVolume, load_untouch, ImageGeom, geom_from_nifti,
                     srow_to_spm_mat, spm_mat_to_srow)

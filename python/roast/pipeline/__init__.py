@@ -1,4 +1,15 @@
-"""The three user-facing pipelines and their bookkeeping."""
+"""The three user-facing pipelines and their bookkeeping.
+
+* :mod:`~roast.pipeline.simulate` - ``roast()``: segment, place, mesh, solve, show.
+* :mod:`~roast.pipeline.target` - ``roast_target()``: optimise a montage against
+  a lead field.
+* :mod:`~roast.pipeline.review` - ``review_res()``: re-open the figures of a
+  finished run.
+* :mod:`~roast.pipeline.options` - validation and normalisation of the options,
+  and the comparison that decides whether a run is new.
+* :mod:`~roast.pipeline.log` - unique tags, the option records and the readable
+  run logs.
+"""
 
 from .options import (RoastOptions, TargetOptions, parse_recipe, build_elec_para,
                       validate_mesh_options, validate_conductivities, is_new_options)

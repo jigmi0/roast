@@ -1,3 +1,17 @@
+% runExamples
+%
+% Runs every example from the ROAST manual (docs/roast-manual.md), one after
+% another, so a release can be smoke-tested end to end. Each call is wrapped in
+% try/catch and any error is appended to errLog.txt, so one failing example does
+% not stop the rest. Note this takes a very long time: the two lead-field
+% examples alone run for hours.
+%
+% Run it from the root directory of the repository, after
+% addpath('matlab'); setup_roast;
+%
+% See ../../python/examples/run_examples.py for the same list in Python, which
+% can also run a single example.
+
 clear;
 
 try
