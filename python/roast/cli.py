@@ -16,15 +16,17 @@ import numpy as np
 from .config import CAP_TYPES, ELEC_TYPES, OPT_TYPES
 
 
-def _parse_recipe(pairs):
+def _parse_recipe(pairs, parser: argparse.ArgumentParser):
     """``F1:0.3 P2:-0.3`` -> ``['F1', 0.3, 'P2', -0.3]``."""
     recipe = []
     for pair in pairs:
-        if ":" not in pair:
-            raise argparse.ArgumentTypeError(
-                f"'{pair}' is not an electrode:current pair, e.g. Fp1:1")
-        name, current = pair.rsplit(":", 1)
-        recipe += [name, float(current)]
+        name, _, current = pair.rpartition(":")
+        try:
+            recipe += [name, float(current)]
+        except ValueError:
+            current = None
+        if not name or current is None:
+            parser.error(f"'{pair}' is not an electrode:current pair, e.g. Fp1:1")
     return recipe
 
 
@@ -80,6 +82,7 @@ def build_parser() -> argparse.ArgumentParser:
     review.add_argument("--sim-tag", required=True)
     review.add_argument("--tar-tag", default=None)
     review.add_argument("--tissue", default="brain")
+    review.add_argument("--no-show", action="store_true", help="do not open figures")
     return parser
 
 
@@ -99,7 +102,7 @@ def main(argv=None) -> int:
         from .pipeline import roast
 
         recipe = "leadField" if args.lead_field else (
-            _parse_recipe(args.recipe) if args.recipe else None)
+            _parse_recipe(args.recipe, parser) if args.recipe else None)
         roast(args.subject, recipe, cap_type=args.cap_type, elec_type=args.elec_type,
               elec_size=args.elec_size, elec_ori=args.elec_ori, T2=args.t2,
               multiaxial=args.multiaxial, manual_gui=args.manual_gui,
@@ -119,11 +122,12 @@ def main(argv=None) -> int:
     else:
         from .pipeline import review_res
 
-        review_res(args.subject, args.sim_tag, tissue=args.tissue, tar_tag=args.tar_tag)
+        review_res(args.subject, args.sim_tag, tissue=args.tissue, tar_tag=args.tar_tag,
+                   show=not args.no_show)
 
-    if getattr(args, "no_show", False) is False and args.command != "review":
+    if not args.no_show:
         import matplotlib.pyplot as plt
-        plt.show()
+        plt.show()                      # keep the figures open until they are closed
     return 0
 
 

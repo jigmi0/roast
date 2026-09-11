@@ -12,6 +12,7 @@ from pathlib import Path
 
 import numpy as np
 from scipy.interpolate import LinearNDInterpolator
+from scipy.spatial import Delaunay
 
 from ..io.matfile import save_mat
 from ..io.meshfile import read_pos
@@ -28,14 +29,19 @@ def interpolate_to_grid(points, values, dim):
     """Linear interpolation from scattered mesh nodes onto the voxel grid.
 
     This is MATLAB's ``TriScatteredInterp``: a Delaunay triangulation of the
-    nodes, linear inside the hull and NaN outside it.
+    nodes, linear inside the hull and NaN outside it.  The triangulation is by
+    far the expensive part, so ``values`` may carry one column per quantity
+    (``(n, k)``, giving a result with a trailing axis of length ``k``) and
+    ``points`` may be a ready-made :class:`scipy.spatial.Delaunay`.
     """
     dim = np.asarray(dim, dtype=int)
-    interpolator = LinearNDInterpolator(np.asarray(points, dtype=float),
-                                        np.asarray(values, dtype=float))
+    values = np.asarray(values, dtype=float)
+    triangulation = (points if isinstance(points, Delaunay)
+                     else Delaunay(np.asarray(points, dtype=float)))
+    interpolator = LinearNDInterpolator(triangulation, values)
     grid = np.meshgrid(*[np.arange(1, n + 1, dtype=float) for n in dim], indexing="ij")
     query = np.column_stack([g.ravel() for g in grid])
-    return interpolator(query).reshape(dim)
+    return interpolator(query).reshape(tuple(dim) + values.shape[1:])
 
 
 def post_getdp(subj, template, node, geom, uni_tag, ind_solved=None):
@@ -62,18 +68,19 @@ def _post_simulation(directory, subj_name, template, node, geom, uni_tag):
         node[:, i] = node[:, i] / geom.mat[i, i]
 
     logger.info("converting the results into Matlab format...")
-    ids, values = read_pos(directory / f"{subj_name}_{uni_tag}_v.pos", 1)
-    voltage = values[:, 0] - values[:, 0].min()          # re-reference the voltage
-    vol_all = interpolate_to_grid(node[ids - 1, :3], voltage, geom.dim)
+    ids_v, values_v = read_pos(directory / f"{subj_name}_{uni_tag}_v.pos", 1)
+    ids_e, values_e = read_pos(directory / f"{subj_name}_{uni_tag}_e.pos", 3)
+    # Both files cover the same nodes, so one triangulation serves everything.
+    triangulation_e = Delaunay(node[ids_e - 1, :3])
+    triangulation_v = (triangulation_e if np.array_equal(ids_v, ids_e)
+                       else Delaunay(node[ids_v - 1, :3]))
+
+    voltage = values_v[:, 0] - values_v[:, 0].min()      # re-reference the voltage
+    vol_all = interpolate_to_grid(triangulation_v, voltage, geom.dim)
     if np.all(np.isnan(vol_all)):
         raise RuntimeError(_NOT_CONVERGED)
 
-    ids, values = read_pos(directory / f"{subj_name}_{uni_tag}_e.pos", 3)
-    points = node[ids - 1, :3]
-    ef_all = np.zeros(tuple(geom.dim) + (3,))
-    for component in range(3):
-        ef_all[..., component] = interpolate_to_grid(points, values[:, component],
-                                                     geom.dim)
+    ef_all = interpolate_to_grid(triangulation_e, values_e, geom.dim)
     if np.all(np.isnan(ef_all)):
         raise RuntimeError(_NOT_CONVERGED)
     ef_mag = np.sqrt(np.sum(ef_all ** 2, axis=3))

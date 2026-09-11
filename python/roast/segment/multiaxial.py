@@ -11,7 +11,7 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
-from ..config import arch, lib_dir
+from ..config import arch, lib_dir, roast_root
 from ..utils.logging import get_logger
 
 __all__ = ["multiaxial_python", "run_multiaxial"]
@@ -41,7 +41,9 @@ def multiaxial_python(install: bool = True) -> Path:
         logger.info("Setting up the Multiaxial environment (first run only)...")
         if system != "win64":
             setup.chmod(0o755)
-        result = subprocess.run([str(setup)], cwd=str(base))
+        # The shell scripts build their paths from ``$(pwd)/lib/multiaxial``, so
+        # they must be started from the repository root, as the MATLAB code does.
+        result = subprocess.run([str(setup)], cwd=str(roast_root()))
         if result.returncode != 0:
             raise RuntimeError(f"Multiaxial setup script {setup} failed.")
     else:

@@ -7,5 +7,33 @@ dist/
 .pytest_cache/
 .venv/
 
-# ROAST outputs
+# ROAST outputs (everything a run writes next to the subject MRI)
 errLog.txt
+*_roastLog
+*_targetLog
+*_roastOptions.json
+*_targetOptions.json
+*_roastOptions.mat
+*_targetOptions.mat
+*_roastResult.mat
+*_targetResult.mat
+*_usedElecArea.mat
+*_seg8.mat
+*_rmask.mat
+*_niftyReg.mat
+*_ras.nii
+*_1mm.nii
+*_padded*.nii
+*_T2_aligned.nii
+*_MNI.nii
+*_masks.nii
+*_mask_elec.nii
+*_mask_gel.nii
+*_v.nii
+*_e.nii
+*_emag.nii
+*.pos
+*.pro
+*.msh
+*.pre
+*.res

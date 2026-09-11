@@ -105,3 +105,43 @@ def test_nyhead_mapping_loads():
     image, tpm, affine = load_spm_mapping(example_dir() / "nyhead_T1orT2_seg8.mat")
     assert image.dim.tolist() == [394, 466, 620]
     assert affine.shape == (4, 4)
+
+
+def test_large_results_use_the_matlab_v73_layout(tmp_path, monkeypatch):
+    import h5py
+    from roast.io import matfile
+
+    monkeypatch.setattr(matfile, "_V7_LIMIT", 0)      # force the HDF5 path
+    lead_field = np.arange(24, dtype=float).reshape(4, 3, 2)
+    saved = {"A_all": lead_field, "mon": np.array([1.0, -0.5, -0.5]),
+             "montage_txt": "Fp1 (1.000 mA), Iz (-1.000 mA)", "flag": True,
+             "nothing": np.zeros((0, 3)), "nested": {"k": np.float64(0.2)}}
+    path = matfile.save_mat(tmp_path / "big.mat", saved)
+
+    # MATLAB recognises the file by its 128-byte header in the user block.
+    header = path.read_bytes()[:128]
+    assert header.startswith(b"MATLAB 7.3 MAT-file")
+    assert header[124:128] == b"\x00\x02IM"
+    with h5py.File(path, "r") as handle:
+        assert handle["A_all"].shape == (2, 3, 4)       # axes reversed, as MATLAB
+        assert handle["A_all"].attrs["MATLAB_class"] == b"double"
+        assert handle["montage_txt"].attrs["MATLAB_class"] == b"char"
+        assert handle["nested"].attrs["MATLAB_class"] == b"struct"
+
+    back = matfile.load_mat(path)
+    assert np.array_equal(back["A_all"], lead_field)
+    assert back["mon"].tolist() == [1.0, -0.5, -0.5]
+    assert back["montage_txt"] == saved["montage_txt"]
+    assert back["flag"] == True                           # noqa: E712
+    assert back["nothing"].shape == (0, 3)
+    assert back["nested"]["k"] == pytest.approx(0.2)
+
+
+def test_small_results_stay_in_the_v7_format(tmp_path):
+    from roast.io import matfile
+
+    path = matfile.save_mat(tmp_path / "small.mat", {"x": np.ones(3), "txt": "abc"})
+    assert path.read_bytes()[:10] == b"MATLAB 5.0"
+    back = matfile.load_mat(path)
+    assert back["x"].tolist() == [1.0, 1.0, 1.0]
+    assert back["txt"] == "abc"

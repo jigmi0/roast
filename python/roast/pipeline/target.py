@@ -16,7 +16,7 @@ from ..config import ORIENT_KEYWORDS, OPT_TYPES, example_dir
 from ..electrodes.preproc import ElecPara, elec_preproc
 from ..geometry.pointcloud import get_data_around_target
 from ..io.caps import read_elec_loc
-from ..io.matfile import load_mat, save_mat
+from ..io.matfile import load_mat, load_spm_mapping, save_mat
 from ..io.nifti import NiftiVolume
 from ..preprocess.orientation import convert_to_ras_point_cloud
 from ..solver.post import interpolate_to_grid
@@ -166,7 +166,6 @@ def roast_target(subj=None, sim_tag=None, target_coord=None, *, coord_type="mni"
     if not paths.mapping.exists():
         raise FileNotFoundError(f"Mapping file {paths.mapping} not found. Please check "
                                 "if you ran through STEP 1&2 in ROAST.")
-    from ..io.matfile import load_spm_mapping
     image = load_spm_mapping(paths.mapping)[0]
     mri2mni = np.asarray(opt_roast.mri2mni, dtype=float)
     mni2mri = np.linalg.inv(mri2mni)
@@ -391,10 +390,7 @@ def _run_optimization(subj, sim_tag, tag, problem, orient, u0, node, elem, image
     for i in range(a_all.shape[1]):
         xopt[:, i + 1] = a_all[valid][:, i, :] @ i_opt
 
-    ef_all = np.zeros(tuple(image.dim) + (3,))
-    for i in range(3):
-        ef_all[..., i] = interpolate_to_grid(node_voxel[valid, :3], xopt[:, i + 1],
-                                             image.dim)
+    ef_all = interpolate_to_grid(node_voxel[valid, :3], xopt[:, 1:4], image.dim)
     ef_mag = np.sqrt(np.sum(ef_all ** 2, axis=3))
 
     # -- intensity and focality at the targets ------------------------------
@@ -437,6 +433,5 @@ def _run_optimization(subj, sim_tag, tag, problem, orient, u0, node, elem, image
     write_target_results(subj, {"montage_txt": montage_txt, "target_mag": target_mag,
                                 "target_int": target_int,
                                 "target_mag_foc": target_mag_foc})
-    save_mat(result_file, {k: v for k, v in results.items() if k != "montage_txt"}
-             | {"montage_txt": montage_txt})
+    save_mat(result_file, results)
     return results

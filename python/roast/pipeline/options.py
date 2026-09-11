@@ -143,11 +143,7 @@ def build_elec_para(elec_name: Sequence[str], cap_type="1010", elec_type="disc",
         if elec_size is None:
             sizes = np.atleast_2d(DEFAULT_ELEC_SIZE[elec_type])
         else:
-            if isinstance(elec_size, (list, tuple)) and elec_size and \
-                    isinstance(elec_size[0], (list, tuple, np.ndarray)):
-                sizes = np.atleast_2d(np.asarray(elec_size, dtype=float))
-            else:
-                sizes = np.atleast_2d(np.asarray(elec_size, dtype=float))
+            sizes = np.atleast_2d(np.asarray(elec_size, dtype=float))
             if sizes.shape[0] > 1 and sizes.shape[0] != n_elec:
                 raise ValueError("You want different sizes for each electrode. Please "
                                  "tell ROAST the size for each electrode respectively, "

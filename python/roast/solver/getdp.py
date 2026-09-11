@@ -16,7 +16,7 @@ from ..config import NUM_OF_TISSUE, arch, lib_dir
 from ..utils.logging import get_logger
 from .prepare import load_elec_areas
 
-__all__ = ["getdp_path", "write_pro_file", "solve_by_getdp"]
+__all__ = ["getdp_path", "write_pro_file", "getdp_command", "solve_by_getdp"]
 
 logger = get_logger()
 
@@ -186,6 +186,23 @@ PostProcessing {
 """
 
 
+def getdp_command(subj, uni_tag):
+    """The getDP invocation for a prepared model, and the directory to run it in.
+
+    getDP resolves the paths on its command line against the working directory,
+    and the ``.pro`` file names its output files relative to that directory too,
+    so the solver runs *inside* the subject folder and is handed absolute paths.
+    """
+    subj = Path(subj).resolve()
+    directory = subj.parent
+    subj_name = subj.stem
+    command = [str(getdp_path()), str(directory / f"{subj_name}_{uni_tag}.pro"),
+               "-solve", "EleSta_v",
+               "-msh", str(directory / f"{subj_name}_{uni_tag}_ready.msh"),
+               "-pos", "Map"]
+    return command, directory
+
+
 def solve_by_getdp(subj, current, sigma, ind_use, uni_tag, lf_tag: str = "") -> None:
     """Run getDP on the prepared mesh."""
     subj = Path(subj)
@@ -198,10 +215,8 @@ def solve_by_getdp(subj, current, sigma, ind_use, uni_tag, lf_tag: str = "") -> 
     write_pro_file(pro_file, subj_name, uni_tag, np.atleast_1d(current), sigma,
                    ind_use, num_of_elec, areas, lf_tag)
 
-    solver = getdp_path()
-    command = [str(solver), str(pro_file), "-solve", "EleSta_v",
-               "-msh", str(directory / f"{subj_name}_{uni_tag}_ready.msh"), "-pos", "Map"]
-    result = subprocess.run(command, cwd=str(directory) if str(directory) else None)
+    command, workdir = getdp_command(subj, uni_tag)
+    result = subprocess.run(command, cwd=str(workdir))
     if result.returncode:
         raise RuntimeError("getDP solver cannot work properly on your system. "
                            "Please check any error message you got.")

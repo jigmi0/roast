@@ -87,11 +87,14 @@ def render_field_on_mesh(node, elem, face, color, in_current, num_of_gel,
 
 def visualize_res(subj, mask, mri2mni, node, elem, face, in_current, geom, uni_tag,
                   vol_all=None, ef_mag=None, ef_all=None, xopt=None,
-                  target_coord=None, surface_index: int = 2):
+                  target_coord=None, surface_index: int = 2, slice_tissues=(1, 2)):
     """Show the results of ``roast`` (voltage and field) or of ``roast_target``.
 
     Pass ``vol_all`` for a simulation; pass ``xopt`` (the node values of the
-    optimised field) and ``target_coord`` for a targeting run.
+    optimised field) and ``target_coord`` for a targeting run.  The field is
+    rendered on the surface of tissue ``surface_index`` and the slice views are
+    restricted to the tissues in ``slice_tissues`` (the brain by default); the
+    slices are cropped to the brain only when nothing but brain is shown.
     """
     subj = Path(subj)
     directory = subj.parent
@@ -132,25 +135,27 @@ def visualize_res(subj, mask, mri2mni, node, elem, face, in_current, geom, uni_t
 
     logger.info("generating slice views...")
     mask_img = np.asarray(mask.img)
-    brain = (mask_img == 1) | (mask_img == 2)
-    brain_only = np.where(brain, 1.0, np.nan)
+    slice_tissues = tuple(int(t) for t in slice_tissues)
+    tissue_only = np.where(np.isin(mask_img, slice_tissues), 1.0, np.nan)
     cmap = roast_colormap()
-    bbox = brain_crop(mask_img)
+    if set(slice_tissues) <= {1, 2}:
+        bbox = brain_crop(mask_img)
+        pos = np.round(bbox.mean(axis=0)).astype(int)
+    else:
+        bbox, pos = None, None             # the whole head, from its centre
 
     if is_roast:
-        sliceshow(vol_all * brain_only, np.round(bbox.mean(axis=0)).astype(int), cmap,
-                  None, "Voltage (mV)",
+        sliceshow(vol_all * tissue_only, pos, cmap, None, "Voltage (mV)",
                   f"Voltage in Simulation: {uni_tag}. Click anywhere to navigate.",
                   None, mri2mni, bbox)
 
-    ef_all = np.asarray(ef_all, dtype=float) * brain_only[..., None]
-    ef_mag = np.asarray(ef_mag, dtype=float) * brain_only
+    ef_all = np.asarray(ef_all, dtype=float) * tissue_only[..., None]
+    ef_mag = np.asarray(ef_mag, dtype=float) * tissue_only
     finite = ef_mag[~np.isnan(ef_mag)]
     clim = (float(np.min(finite)), float(prctile(finite, 95)))
 
     if is_roast:
-        sliceshow(ef_mag, np.round(bbox.mean(axis=0)).astype(int), cmap, clim,
-                  "Electric field (V/m)",
+        sliceshow(ef_mag, pos, cmap, clim, "Electric field (V/m)",
                   f"Electric field in Simulation: {uni_tag}. Click anywhere to navigate.",
                   ef_all, mri2mni, bbox)
     else:

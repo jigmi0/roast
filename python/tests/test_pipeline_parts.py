@@ -1,5 +1,7 @@
 """Segmentation helpers, the solver front-end and the path bookkeeping."""
 
+from pathlib import Path
+
 import numpy as np
 import pytest
 
@@ -115,3 +117,48 @@ def test_log_assigns_a_tag_and_finds_the_previous_run(tmp_path):
                             "roast")
     assert reloaded.config_txt == options.config_txt
     assert reloaded.elec_para[0].elec_size.tolist() == [[6.0, 2.0]]
+
+
+def test_interpolate_to_grid_handles_several_columns_at_once():
+    points = np.array([[1.0, 1, 1], [3, 1, 1], [1, 3, 1], [1, 1, 3], [3, 3, 3]])
+    values = np.column_stack([[0.0, 2, 2, 2, 6], [1.0, 1, 1, 1, 1]])
+    grid = interpolate_to_grid(points, values, [3, 3, 3])
+    assert grid.shape == (3, 3, 3, 2)
+    assert grid[0, 0, 0, 0] == pytest.approx(0.0)
+    assert grid[2, 2, 2, 0] == pytest.approx(6.0)
+    finite = grid[..., 1][~np.isnan(grid[..., 1])]
+    assert np.allclose(finite, 1.0)
+
+
+def test_getdp_is_run_inside_the_subject_folder_with_absolute_paths(tmp_path, monkeypatch):
+    from roast.solver.getdp import getdp_command
+
+    (tmp_path / "example").mkdir()
+    monkeypatch.chdir(tmp_path)
+    command, workdir = getdp_command("example/subject1.nii", "tag")
+    assert workdir == (tmp_path / "example").resolve()
+    assert command[1] == str(workdir / "subject1_tag.pro")
+    assert command[command.index("-msh") + 1] == str(workdir / "subject1_tag_ready.msh")
+    assert all(Path(item).is_absolute() for item in (command[0], command[1]))
+
+
+def test_multiaxial_setup_runs_from_the_repository_root(tmp_path, monkeypatch):
+    import subprocess
+    from roast.segment import multiaxial
+
+    base = tmp_path / "lib" / "multiaxial"
+    base.mkdir(parents=True)
+    (base / "setupLinux.sh").write_text("#!/bin/sh\n")
+    monkeypatch.setattr(multiaxial, "lib_dir", lambda: tmp_path / "lib")
+    monkeypatch.setattr(multiaxial, "arch", lambda: "glnxa64")
+    monkeypatch.setattr(multiaxial, "roast_root", lambda: tmp_path)
+    calls = []
+
+    def fake_run(command, cwd=None, **kwargs):
+        calls.append((command, cwd))
+        return subprocess.CompletedProcess(command, 0)
+
+    monkeypatch.setattr(multiaxial.subprocess, "run", fake_run)
+    interpreter = multiaxial.multiaxial_python()
+    assert calls[0][1] == str(tmp_path)                 # not lib/multiaxial
+    assert interpreter == base / "multiaxialEnvLinux" / "bin" / "python3"

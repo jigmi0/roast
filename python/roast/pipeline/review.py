@@ -181,5 +181,5 @@ def review_res(subj=None, sim_tag=None, tissue="brain", fast_render=True, tar_ta
         from ..viz.results import visualize_res
         visualize_res(subj, mask, mri2mni, node, elem, face, in_current, image,
                       sim_tag if is_roast else tar_tag, surface_index=surface_index,
-                      **payload)
+                      slice_tissues=slice_tissues, **payload)
     return payload

@@ -67,20 +67,12 @@ class ModelPaths:
     model: Path                # after RAS conversion, resampling and padding
     spm: Path                  # name the SPM outputs are filed under
     seg: Path                  # name the segmentation is filed under
+    mapping: Path              # ``_seg8.mat`` (SPM) or ``_niftyReg.mat`` (Multiaxial)
     t2: Path | None
 
     @property
     def masks(self) -> Path:
         return self.seg.parent / (self.seg.stem + "_masks.nii")
-
-    @property
-    def mapping(self) -> Path:
-        """``_seg8.mat`` (SPM) or ``_niftyReg.mat`` (Multiaxial)."""
-        return self._mapping
-
-    @mapping.setter
-    def mapping(self, value):
-        self._mapping = value
 
 
 def model_paths(subj, model, t2, multiaxial: bool) -> ModelPaths:
@@ -95,13 +87,11 @@ def model_paths(subj, model, t2, multiaxial: bool) -> ModelPaths:
     else:
         seg = directory / (spm.stem + "_SPM" + suffix)
         mapping = directory / (spm.stem + "_seg8.mat")
-    paths = ModelPaths(subj=subj, model=model, spm=spm, seg=seg,
-                       t2=Path(t2) if t2 else None)
-    paths.mapping = mapping
-    return paths
+    return ModelPaths(subj=subj, model=model, spm=spm, seg=seg, mapping=mapping,
+                      t2=Path(t2) if t2 else None)
 
 
-def _preprocess_mri(subj, t2, do_resamp, padding_amount, multiaxial):
+def _preprocess_mri(subj, t2, do_resamp, padding_amount):
     """Re-orient, resample, pad and (if needed) align the T2."""
     volume = NiftiVolume.load(subj)
     if volume.has_bad_header():
@@ -327,7 +317,7 @@ def roast(subj=None, recipe=None, *, cap_type="1010", elec_type="disc", elec_siz
     # -- preprocessing -----------------------------------------------------
     if not is_nyhead:
         model, T2, is_non_ras, resampling = _preprocess_mri(
-            subj, T2, bool(resampling), zero_pad, multiaxial)
+            subj, T2, bool(resampling), zero_pad)
     else:
         is_non_ras = False
         model, T2, multiaxial, manual_gui = _prepare_nyhead(

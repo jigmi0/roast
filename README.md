@@ -12,8 +12,11 @@ This repository contains **two implementations of the same pipeline**:
 | [`python/`](python/) | Python 3.9+ | `roast`, `roast_target`, `review_res` | full port, actively developed |
 | [`matlab/`](matlab/) | MATLAB | `roast`, `roast_target`, `reviewRes` | original reference implementation |
 
-Both read the same data files, call the same external solvers, and write results
-in the same layout, so a model built by one can be inspected with the other.
+Both read the same data files, call the same external solvers, and write the
+model files (segmentation, electrode masks, mesh, fields, lead field) in the same
+layout, so a model built by one can be picked up by the other.  Only the run
+bookkeeping (option records, targeting results) is specific to each
+implementation.
 
 ## Repository layout
 

@@ -38,8 +38,8 @@ roast target --sim-tag myLeadField --target -48 -8 50
 roast review example/subject1.nii --sim-tag myTag
 ```
 
-`python examples/run_examples.py --list` lists every example from the manual;
-pass a number to run one of them.
+`python python/examples/run_examples.py --list` lists every example from the
+manual; pass a number to run one of them.
 
 Run everything from the repository root - example MRIs and data files are
 addressed relative to the working directory.
@@ -61,8 +61,10 @@ addressed relative to the working directory.
 SPM12 is a MATLAB toolbox, so it cannot be rewritten in Python; the port drives
 the bundled copy through an interpreter.  Point `ROAST_MATLAB_CMD` at your
 `matlab` (or `octave`) executable and `ROAST_SPM_PATH` at SPM12 if it lives
-outside `lib/`.  **`multiaxial=True` needs no MATLAB at all** - that segmentation
-is a Python CNN - so it is the way to run the whole pipeline in Python.
+outside `lib/`.  Note that the copy under `lib/spm12` is patched to write the
+`_rmask.mat` file the segmentation touch-up relies on, so a stock SPM12 will not
+do.  **`multiaxial=True` needs no MATLAB at all** - that segmentation is a
+Python CNN - so it is the way to run the whole pipeline in Python.
 
 ## Option map
 
@@ -92,8 +94,14 @@ Add `show=False` to any of the three functions to skip the figures in batch runs
   decides ties in the placement code.
 * Results are written under the same names as the MATLAB version
   (`<subj>_<tag>_roastResult.mat`, `..._v.nii`, `..._e.nii`, `..._emag.nii`).
-  Option records are JSON (`<subj>_<tag>_roastOptions.json`) rather than `.mat`,
-  so a run can be inspected and diffed without MATLAB.
+  `.mat` files above 1.5 GB (lead fields, large heads) are written in MATLAB's
+  `-v7.3` HDF5 layout, so MATLAB loads them like any other `.mat` file.
+* Option records are JSON (`<subj>_<tag>_roastOptions.json`) rather than `.mat`,
+  so a run can be inspected and diffed without MATLAB.  Because the two
+  implementations keep their run records differently, `review_res` re-opens
+  runs made with the Python port and `reviewRes` those made with MATLAB; the
+  model files in between (segmentation, electrode masks, mesh, fields, lead
+  field) are interchangeable.
 
 ## Differences from the MATLAB implementation
 
