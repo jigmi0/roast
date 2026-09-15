@@ -1,0 +1,32 @@
+# ROAST run outputs, generated next to the subject MRI.
+# These are large (a single run of the MNI152 example is ~650 MB, and three
+# files exceed GitHub's 100 MB limit), and fully reproducible from the inputs.
+example/*_ras.nii
+example/*_ras_*.nii
+example/*_seg8.mat
+example/*_rmask.mat
+example/c[1-6]*.nii
+example/*_roastResult.mat
+example/*_roastOptions.mat
+example/*_roastOptions.json
+example/*_usedElecArea.mat
+example/*_mask_elec.nii
+example/*_mask_gel.nii
+example/*_v.nii
+example/*_e.nii
+example/*_emag.nii
+example/*_v.pos
+example/*_e.pos
+example/*.msh
+example/*.pro
+example/*_roastLog
+example/MNI152_T1_1mm_2*.mat
+example/subject1_2*.mat
+
+# Octave MEX built from SPM12 source (see octave-compat/README.md)
+lib/spm12/**/*.mex
+lib/spm12/src/
+
+# Python caches
+__pycache__/
+*.pyc
