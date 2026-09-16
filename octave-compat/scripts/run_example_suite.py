@@ -19,6 +19,9 @@ os.makedirs(SP, exist_ok=True)
 # The two checkouts to compare: master and the Python port.
 M = os.environ.get("ROAST_MASTER_DIR", "/home/user/roast")
 P = os.environ.get("ROAST_PORT_DIR", "/home/user/roast-py")
+# Run the two implementations at the same time? Off by default; see the
+# note in main() about getDP being OOM-killed when two solves overlap.
+PARALLEL = os.environ.get("ROAST_SUITE_PARALLEL") == "1"
 MEX, PEX = os.path.join(M, "example"), os.path.join(P, "example")
 PY = "/home/user/venv-roast/bin/python"
 CMDS = json.load(open(os.environ.get("ROAST_CMDS_JSON", "master_cmds.json")))
@@ -99,21 +102,34 @@ def main(nums, timeout=3600):
         before_m, before_p = tags(MEX), tags(PEX)
         print(f"[{time.strftime('%H:%M:%S')}] example {n}: {CMDS[str(n)][:70]}", flush=True)
         rec = {"example": n}
-        # the two sides are independent and write to different directories,
-        # so run them concurrently instead of back to back
+        # The two sides are independent and write to different directories, so
+        # running them concurrently is tempting - but getDP solves the system
+        # with a MUMPS LU factorisation that peaks near 8 GB on the padded
+        # models, and two at once gets one of them OOM-killed, which then looks
+        # exactly like a port defect. Sequential is the default for that reason;
+        # set ROAST_SUITE_PARALLEL=1 only on a box with RAM to spare.
         e = dict(env, ROAST_CMD=CMDS[str(n)])
+        master_cmd = ["octave-cli", "--no-gui",
+                      os.path.join(M, "octave-compat", "scripts", "run_one_master.m")]
+        port_cmd = [PY, "python/examples/run_examples.py", str(n)]
         fm = open(f"{SP}/ex{n}_master.log", "w")
         fp = open(f"{SP}/ex{n}_python.log", "w")
-        pm = subprocess.Popen(["octave-cli", "--no-gui", os.path.join(M, "octave-compat", "scripts", "run_one_master.m")],
-                              cwd=M, env=e, stdout=fm, stderr=subprocess.STDOUT)
-        pp = subprocess.Popen([PY, "python/examples/run_examples.py", str(n)],
-                              cwd=P, env=env, stdout=fp, stderr=subprocess.STDOUT)
-        for proc, key in ((pm, "master"), (pp, "python")):
+        pm = subprocess.Popen(master_cmd, cwd=M, env=e, stdout=fm, stderr=subprocess.STDOUT)
+        if PARALLEL:
+            pp = subprocess.Popen(port_cmd, cwd=P, env=env, stdout=fp, stderr=subprocess.STDOUT)
+        for proc, key in ((pm, "master"),):
             try:
-                proc.wait(timeout=timeout)
+                rec[key + "_rc"] = proc.wait(timeout=timeout)
             except subprocess.TimeoutExpired:
                 proc.kill()
                 rec[key] = "timeout"
+        if not PARALLEL:
+            pp = subprocess.Popen(port_cmd, cwd=P, env=env, stdout=fp, stderr=subprocess.STDOUT)
+        try:
+            rec["python_rc"] = pp.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            pp.kill()
+            rec["python"] = "timeout"
         fm.close(); fp.close()
         new_m, new_p = tags(MEX) - before_m, tags(PEX) - before_p
         if new_m and new_p:
