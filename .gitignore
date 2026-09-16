@@ -30,3 +30,6 @@ lib/spm12/src/
 # Python caches
 __pycache__/
 *.pyc
+# suite working dir + extracted commands
+roast-suite-work/
+master_cmds.json

@@ -37,9 +37,20 @@ save_default_options("-mat7-binary");
 From the ROAST root:
 
 ```bash
+# the default example
 ROAST_PYTHON=/path/to/python \
 QT_QPA_PLATFORM=offscreen \
 octave-cli --no-gui octave-compat/scripts/run_master.m
+
+# any single example from runExamples.m, by its command text
+ROAST_CMD="roast([],[],'meshoptions',struct('radbound',4,'maxvol',8))" \
+ROAST_PYTHON=/path/to/python \
+octave-cli --no-gui octave-compat/scripts/run_one_master.m
+
+# the whole suite on BOTH implementations, comparing and cleaning up per
+# example (each one generates ~1.3 GB across the two trees)
+python3 octave-compat/scripts/extract_examples.py > master_cmds.json
+python3 octave-compat/scripts/run_example_suite.py 5 7 9 11 13
 ```
 
 `ROAST_PYTHON` must point at an interpreter with numpy/scipy — the
@@ -57,13 +68,21 @@ octave-cli --no-gui octave-compat/scripts/run_master.m
 | `save.m` | Octave cannot write MATLAB's `-v7.3` (HDF5) container. Drops the flag; `.octaverc` makes v7 the default, which fits these results. |
 | `viewMRI.m`, `viewSeg.m`, `viewElectrodes.m`, `visualizeRes.m` | Headless no-ops. Octave has no `uifigure`. Equivalent to the Python port's `show=False`; all four discard their outputs in `roast.m`, so no numbers change. |
 
-Two further collisions are resolved by the environment rather than a shim:
+Two further collisions are handled by the driver rather than a shim, so that
+**the ROAST checkout is never modified**. Octave resolves script-local
+functions ahead of both the current directory and the load path, so
+`scripts/run_one_master.m` opens with `1;` and then defines:
 
-- `lib/cvx/{functions,sedumi}/vec.m` shadow Octave's core 2-argument `vec`,
-  which the image package's `fspecial` needs. CVX is only used by
-  `roast_target`, so move those two files aside for a `roast()` run.
-- Octave needs `pkg load image` / `pkg load statistics` **before** the shim
-  directory is added, so the shims take precedence over the packages.
+- `vec(x, dim)` — `lib/cvx/{functions,sedumi}/vec.m` shadow Octave's core
+  2-argument `vec`, which the image package's `fspecial` needs. Defining both
+  arities locally restores it without moving CVX aside.
+- `viewMRI` / `viewSeg` / `viewElectrodes` / `visualizeRes` as no-ops, which
+  is why the copies under `shims/` are only needed if you call `roast`
+  interactively rather than through the driver.
+
+One ordering rule still matters: `pkg load image` / `pkg load statistics` must
+come **before** the shim directory is added, so the shims take precedence over
+the packages.
 
 ## Fidelity caveats
 
