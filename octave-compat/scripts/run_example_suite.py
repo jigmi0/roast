@@ -22,6 +22,8 @@ P = os.environ.get("ROAST_PORT_DIR", "/home/user/roast-py")
 # Run the two implementations at the same time? Off by default; see the
 # note in main() about getDP being OOM-killed when two solves overlap.
 PARALLEL = os.environ.get("ROAST_SUITE_PARALLEL") == "1"
+# Runs correlating below this are left on disk instead of deleted.
+KEEP_BELOW_R = float(os.environ.get("ROAST_SUITE_KEEP_BELOW_R", "0.95"))
 MEX, PEX = os.path.join(M, "example"), os.path.join(P, "example")
 PY = "/home/user/venv-roast/bin/python"
 CMDS = json.load(open(os.environ.get("ROAST_CMDS_JSON", "master_cmds.json")))
@@ -59,6 +61,38 @@ def newest(d, tag, suffix):
     return hits[0] if hits else None
 
 
+def find_masks(d, shape):
+    """The tissue masks matching this run's geometry.
+
+    A subject has one _masks.nii per derived image (plain, _padded<N>,
+    resampled), so match on shape - the padded variants differ in size - and
+    prefer the most recently written among equals.
+    """
+    for f in sorted(glob.glob(os.path.join(d, "*_masks.nii")),
+                    key=os.path.getmtime, reverse=True):
+        try:
+            if nib.load(f).shape == shape:
+                return f
+        except Exception:
+            continue
+    return None
+
+
+def _stats(a, b, sel, prefix, row):
+    x, y = a[sel], b[sel]
+    if x.size < 2 or x.std() == 0 or y.std() == 0:
+        return
+    rel = np.abs(x - y) / np.maximum(np.abs(x), 1e-12)
+    row[prefix + "_n"] = int(sel.sum())
+    row[prefix + "_r"] = float(np.corrcoef(x, y)[0, 1])
+    row[prefix + "_mean_m"] = float(x.mean())
+    row[prefix + "_mean_p"] = float(y.mean())
+    row[prefix + "_mean_pct"] = float(100 * abs(x.mean() - y.mean()) / max(abs(x.mean()), 1e-30))
+    row[prefix + "_med_rel_pct"] = float(100 * np.median(rel))
+    row[prefix + "_p95_rel_pct"] = float(100 * np.percentile(rel, 95))
+    row[prefix + "_frac_over5pct"] = float((rel > 0.05).mean())
+
+
 def compare(n, mt, pt):
     row = {"example": n, "desc": CMDS[str(n)][:70]}
     me, pe = newest(MEX, mt, "_emag.nii"), newest(PEX, pt, "_emag.nii")
@@ -70,19 +104,24 @@ def compare(n, mt, pt):
     if a.shape != b.shape:
         row["status"] = f"shape {a.shape} vs {b.shape}"
         return row
-    ok = np.isfinite(a) & np.isfinite(b)
     row["status"] = "ok"
-    row["n_finite"] = int(ok.sum())
-    row["emag_r"] = float(np.corrcoef(a[ok], b[ok])[0, 1])
-    row["emag_mean_m"] = float(a[ok].mean())
-    row["emag_mean_p"] = float(b[ok].mean())
-    row["emag_mean_pct"] = 100 * abs(a[ok].mean() - b[ok].mean()) / max(a[ok].mean(), 1e-30)
-    rel = np.abs(a[ok] - b[ok]) / np.maximum(np.abs(a[ok]), 1e-12)
-    row["emag_med_rel_pct"] = float(100 * np.median(rel))
+    ok = np.isfinite(a) & np.isfinite(b)
+    _stats(a, b, ok, "emag", row)
+
+    # the number that actually matters: |E| inside grey + white matter
+    mk = find_masks(MEX, a.shape)
+    if mk is not None:
+        m = load(mk)
+        brain = ((m == 1) | (m == 2)) & ok
+        if brain.sum() > 1:
+            row["masks"] = os.path.basename(mk)
+            _stats(a, b, brain, "brain", row)
+
     if mv and pv:
         x, y = load(mv), load(pv)
         o = np.isfinite(x) & np.isfinite(y)
-        row["v_r"] = float(np.corrcoef(x[o], y[o])[0, 1])
+        if o.sum() > 1:
+            row["v_r"] = float(np.corrcoef(x[o], y[o])[0, 1])
     return row
 
 
@@ -140,8 +179,15 @@ def main(nums, timeout=3600):
         print("   ->", json.dumps({k: v for k, v in rec.items() if k != "desc"}), flush=True)
         with open(out, "a") as fh:
             fh.write(json.dumps(rec) + "\n")
-        for t in new_m | new_p:
-            cleanup(t)
+        # Keep the outputs of a run that disagrees, so the anomaly can actually
+        # be investigated afterwards; only clean up the ones that agree.
+        rr = rec.get("brain_r", rec.get("emag_r"))
+        if rec.get("status") == "ok" and rr is not None and rr < KEEP_BELOW_R:
+            print("   !! r=%.4f < %s; keeping outputs for inspection" % (rr, KEEP_BELOW_R),
+                  flush=True)
+        else:
+            for t in new_m | new_p:
+                cleanup(t)
 
 
 if __name__ == "__main__":
