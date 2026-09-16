@@ -8,11 +8,17 @@
 #    .mat, .msh, .pro, .pos and .pre, and getDP gains new ones over time.
 example/*_[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]T[0-9][0-9][0-9][0-9][0-9][0-9]*
 
-# 2. Derived images and segmentations, shared between runs of one subject:
-#    <subject>_ras.nii and everything built from it (T1orT2 masks, seg8,
-#    the _padded<N> and resampled variants, MNI-space copies).
+# 2. Derived images and segmentations, shared between runs of one subject.
+#    Note there is no single infix to key on: an MRI needing reorientation
+#    yields <subject>_ras.nii and <subject>_ras_T1orT2_*, while one already in
+#    RAS (example/subject1.nii) goes straight to <subject>_T1orT2_*. Cover the
+#    SPM outputs by their _T1orT2_ marker, and the resampled/padded base
+#    images by theirs, so neither naming path leaks through.
+example/*_T1orT2_*
 example/*_ras.nii
 example/*_ras_*
+example/*_padded[0-9]*
+example/*_resamp*
 example/c[1-6]*.nii
 example/*_seg8.mat
 example/*_rmask.mat
